@@ -13,6 +13,12 @@ import (
 	"encoding/json"
 )
 
+type DiscordUser struct {
+	Id string
+	UserName string
+	Avatar string
+}
+
 func GenerateAuthURL() (authUrl string, state string) {
 	// generate state string
 	randbytes := make([]byte, 16)
@@ -75,4 +81,42 @@ func GetAuthToken(code string) (token string) {
 		return
 	}
 	return tr.AccessToken
+}
+
+func GetUser(token string) (user DiscordUser, err error) {
+	req, err := http.NewRequest(http.MethodGet, "https://discord.com/api/oauth2/@me", nil)
+	if err != nil {
+		log.Printf("could not construct request")
+		return
+	}
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("could not send request")
+		return
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("could not read response")
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("request failed: %s, content: %s", resp.Status, resp.Body)
+		return
+	}
+	
+	type UserResponse struct {
+		User DiscordUser
+	}
+	var ur UserResponse
+	err = json.Unmarshal(body, &ur)
+	if err != nil {
+		log.Printf("could not unmarshal json")
+		return
+	}
+	return ur.User, nil
 }

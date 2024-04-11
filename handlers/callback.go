@@ -15,6 +15,15 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := auth.GetAuthToken(query.Get("code"))
-	fmt.Println(token)
-	fmt.Fprint(w, "authentication succeed")
+	if token == "" {
+		fmt.Fprintf(w, "authentication failed: could not acquire token")
+		return
+	}
+
+	user, err := auth.GetUser(token)
+	if err != nil {
+		fmt.Fprintf(w, "could not fetch user data")
+		return
+	}
+	fmt.Fprintf(w, `authentication succeed: %s, %s, <img src="https://cdn.discordapp.com/avatar/%[1]s/%[3]s.png">`, user.Id, user.UserName, user.Avatar)
 }
