@@ -4,6 +4,8 @@ import (
 	"os"
 	"fmt"
 	"io"
+	"log"
+	"strings"
 	"net/url"
 	"net/http"
 	"crypto/rand"
@@ -29,27 +31,48 @@ func GenerateAuthURL() (authUrl string, state string) {
 	return authUrl, state
 }
 
-func GetAuthToken(code string) string {
+func GetAuthToken(code string) (token string) {
 	postBody := url.Values{}
 	postBody.Add("grant_type", "authorization_code")
 	postBody.Add("code", code)
 	postBody.Add("redirect_uri", os.Getenv("CALLBACK_URL"))
 
-	resp, err := http.PostForm("https://discord.com/api/oauth2/token", postBody)
+	req, err := http.NewRequest(http.MethodPost, "https://discord.com/api/oauth2/token", strings.NewReader(postBody.Encode()))
 	if err != nil {
-		return ""
+		log.Print("could not construct request")
+		return
+	}
+	
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(os.Getenv("DISCORD_CLIENT_ID"), os.Getenv("DISCORD_CLIENT_SECRET"))
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Print("could not send request")
+		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ""
+		log.Print("could not read response")
+		return
 	}
-	fmt.Println(string(body))
+	
+	if resp.StatusCode != 200 {
+		log.Printf("request failed: %s, content: %s", resp.Status, string(body))
+		return
+	}
 
-	var obj map[string] any
-	err = json.Unmarshal(body, obj)
-	if err != nil {
-		return ""
+	type TokenResponse struct {
+		AccessToken string `json:"access_token"`
 	}
-	return obj["access_token"].(string)
+
+	var tr TokenResponse
+	err = json.Unmarshal(body, &tr)
+	if err != nil {
+		log.Printf("could not unmarshal json")
+		return
+	}
+	return tr.AccessToken
 }
