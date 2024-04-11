@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"os"
 	"fmt"
 	"io"
 	"log"
@@ -26,8 +25,8 @@ func GenerateAuthURL() (authUrl string, state string) {
 	state = hex.EncodeToString(randbytes)
 
 	query := url.Values{}
-	query.Add("client_id", os.Getenv("DISCORD_CLIENT_ID"))
-	query.Add("redirect_uri", os.Getenv("CALLBACK_URL"))
+	query.Add("client_id", discordClientId)
+	query.Add("redirect_uri", discordCallbackURL)
 	query.Add("response_type", "code")
 	query.Add("scope", "identify")
 	query.Add("state", state)
@@ -41,7 +40,7 @@ func GetAuthToken(code string) (token string) {
 	postBody := url.Values{}
 	postBody.Add("grant_type", "authorization_code")
 	postBody.Add("code", code)
-	postBody.Add("redirect_uri", os.Getenv("CALLBACK_URL"))
+	postBody.Add("redirect_uri", discordCallbackURL)
 
 	req, err := http.NewRequest(http.MethodPost, "https://discord.com/api/oauth2/token", strings.NewReader(postBody.Encode()))
 	if err != nil {
@@ -50,7 +49,7 @@ func GetAuthToken(code string) (token string) {
 	}
 	
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(os.Getenv("DISCORD_CLIENT_ID"), os.Getenv("DISCORD_CLIENT_SECRET"))
+	req.SetBasicAuth(discordClientId, discordClientSecret)
 
 	client := http.Client{}
 	resp, err := client.Do(req)
