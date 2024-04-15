@@ -10,7 +10,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"time"
 )
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn int `json:"expires_in"`
+	Expire time.Time
+}
 
 type DiscordUser struct {
 	Id string
@@ -36,7 +44,7 @@ func GenerateAuthURL() (authUrl string, state string) {
 	return authUrl, state
 }
 
-func GetAuthToken(code string) (token string) {
+func GetAuthToken(code string) (tr TokenResponse, err error) {
 	postBody := url.Values{}
 	postBody.Add("grant_type", "authorization_code")
 	postBody.Add("code", code)
@@ -69,17 +77,20 @@ func GetAuthToken(code string) (token string) {
 		return
 	}
 
-	type TokenResponse struct {
-		AccessToken string `json:"access_token"`
+	respTime, err := time.Parse(time.RFC1123, resp.Header.Get("Date"))
+	if err != nil {
+		log.Printf("cannot parse date (%s), set local time instead")
+		respTime = time.Now()
 	}
 
-	var tr TokenResponse
 	err = json.Unmarshal(body, &tr)
 	if err != nil {
 		err = fmt.Errorf("could not unmarshal json: %w", err)
 		return
 	}
-	return tr.AccessToken
+
+	tr.Expire = respTime.Add(time.Second * time.Duration(tr.ExpiresIn))
+	return tr, nil
 }
 
 func GetUser(token string) (user DiscordUser, err error) {

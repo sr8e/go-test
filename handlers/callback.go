@@ -37,15 +37,15 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := auth.GetAuthToken(query.Get("code"))
-	if token == "" {
+	token, err := auth.GetAuthToken(query.Get("code"))
+	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "authentication failed: could not acquire token")
 		log.Printf("could not acquire token: %w", err)
 		return
 	}
 
-	user, err := auth.GetUser(token)
+	user, err := auth.GetUser(token.AccessToken)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "could not fetch user data")
