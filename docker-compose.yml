@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+  app:
+    image: golang:1.22.2
+    container_name: ir_app
+    ports:
+      - 8080:8080
+    volumes:
+      - ./:/ir
+    working_dir: /ir
+    command: go run main.go
+    depends_on:
+      - db
+    environment:
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      SECRET_KEY: ${SECRET_KEY}
+      CALLBACK_URL: ${CALLBACK_URL}
+      IR_CRYPT_KEY: ${IR_CRYPT_KEY}
+
+
+  db:
+    image: postgres:13.4
+    container_name: ir_db
+    ports:
+      - 5433:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      PGDATA: /var/lib/postgresql/data
+
+volumes:
+  db_data:
+      
