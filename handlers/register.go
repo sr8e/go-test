@@ -13,9 +13,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		Name: "state",
 		Value: state,
 	}
-	ce := auth.NewCookieEncrypter()
+	ce, err := auth.NewCookieEncrypter()
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "invalid server configuration")
+		log.Print(err)
+		return
+	}
 	encrypted, err := ce.Encode(cookie)
 	if err != nil {
+		w.WriteHeader(500)
 		fmt.Fprint(w, "something is wrong...")
 		log.Print(err)
 		return
@@ -23,8 +30,4 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &encrypted)
 
 	fmt.Fprintf(w, `<a href="%s">Log in with discord</a>`, url)
-
-	if err != nil {
-		log.Print("error during handle register request...")
-	}
 }

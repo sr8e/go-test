@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"log"
 	"time"
 	"errors"
 	"bytes"
@@ -20,21 +19,19 @@ type CookieEncrypter struct {
 	secretKey []byte
 }
 
-func NewCookieEncrypter() CookieEncrypter {
-	return CookieEncrypter{
-		secretKey: secretKey,
+func NewCookieEncrypter() (*CookieEncrypter, error) {
+	if keyLen := len(secretKey); keyLen == 0 {
+		return nil, errors.New("secret key is not set")
 	}
+	return &CookieEncrypter{secretKey: secretKey}, nil
 }
 
-func (ce *CookieEncrypter) Encode(c http.Cookie) (out http.Cookie, err error) {
+func (ce CookieEncrypter) Encode(c http.Cookie) (out http.Cookie, err error) {
 	out = c
 	// encrypt value
-	if ce.secretKey == nil {
-		err = errors.New("secret key not set")
-		return
-	}
 	enc, err := encrypt(c.Value, ce.secretKey)
 	if err != nil {
+		err = fmt.Errorf("could not encrypt: %w", err)
 		return
 	} 
 	
@@ -43,19 +40,26 @@ func (ce *CookieEncrypter) Encode(c http.Cookie) (out http.Cookie, err error) {
 
 	err = out.Valid()
 	if err != nil {
+		err = fmt.Errorf("cookie not valid: %w", err)
 		return
 	}
 	return out, nil
 }
 
-func (ce *CookieEncrypter) Decode(c http.Cookie) (value string, err error) {
+func (ce CookieEncrypter) Decode(c http.Cookie) (value string, err error) {
 	b, err := base64.StdEncoding.DecodeString(c.Value)
 	if err != nil {
+		err = fmt.Errorf("could not decode cookie value: %w", err)
 		return
 	}
 	
-	cryptStr, err := verify(b, ce.secretKey)
+	cryptStr, expDate, err := verify(b, ce.secretKey)
 	if err != nil {
+		err = fmt.Errorf("failed to verify cookie: %w", err)
+		return
+	}
+	if expDate != c.Expires {
+		err = errors.New("failed to verify cookie: expire time altered")
 		return
 	}
 	return decrypt(cryptStr, ce.secretKey)
@@ -83,7 +87,7 @@ func signature(body string, expire time.Time, hashKey []byte) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(msg))
 }
 
-func verify(sgn []byte, hashKey []byte) (body string, err error) {
+func verify(sgn []byte, hashKey []byte) (body string, exp time.Time, err error) {
 	msgLen := len(sgn) - 32
 	if msgLen <= 0 {
 		err = errors.New("signature too short")
@@ -97,13 +101,13 @@ func verify(sgn []byte, hashKey []byte) (body string, err error) {
 	}
 
 	parts := bytes.SplitN(sgn, []byte(";"), 3)
-	log.Printf("%s, %s",string(parts[0]), string(parts[1]))
 	if len(parts) < 3 {
 		err = errors.New("incorrect signature format")
 		return
 	}
 	expUnix, err := strconv.ParseInt(string(parts[1]), 10, 64)
 	if err != nil {
+		err = fmt.Errorf("invalid expire part: %w", err)
 		return
 	}
 	expire := time.Unix(expUnix, 0)
@@ -111,12 +115,13 @@ func verify(sgn []byte, hashKey []byte) (body string, err error) {
 		err = errors.New("cookie expired")
 		return
 	}
-	return string(parts[0]), nil
+	return string(parts[0]), expire, nil
 }
 
 func decrypt(cryptStr string, secretKey []byte) (decrypted string, err error) {
 	cryptByte, err := base64.StdEncoding.DecodeString(cryptStr)
 	if err != nil {
+		err = fmt.Errorf("could not decode crypted body: %w", err)
 		return
 	}
 

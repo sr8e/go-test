@@ -29,7 +29,6 @@ func init() {
 	}
 
 	secKeyStr := os.Getenv("SECRET_KEY")
-	secretKey = make([]byte, 32)
 	if secKeyStr == "" {
 		log.Println("envitonment variable SECRET_KEY is not set")
 	} else {
@@ -39,6 +38,7 @@ func init() {
 			log.Println("could not decode SECRET_KEY. directly convert to byte array")
 			b = []byte(secKeyStr)
 		}
+		secretKey = make([]byte, 32)
 		copy(secretKey, b[:min(len(b), 32)])
 	}
 }

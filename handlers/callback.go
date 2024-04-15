@@ -14,15 +14,24 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}	
 
-	ce := auth.NewCookieEncrypter()
+	ce, err := auth.NewCookieEncrypter()
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "invalid server configuration")
+		log.Print(err)
+		return
+	}
 	value, err := ce.Decode(*c)
 	if err != nil {
+		w.WriteHeader(400)
 		fmt.Fprintf(w, "authentication failed: cookie corrupted")
 		log.Print(err)
+		return
 	}
 	query := r.URL.Query()
 	queryState := query.Get("state")
 	if value != queryState {
+		w.WriteHeader(400)
 		fmt.Fprintf(w, "authentication failed: invalid state")
 		log.Printf("cookie:%s, query:%s", value, queryState)
 		return
@@ -30,13 +39,17 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 
 	token := auth.GetAuthToken(query.Get("code"))
 	if token == "" {
+		w.WriteHeader(500)
 		fmt.Fprintf(w, "authentication failed: could not acquire token")
+		log.Printf("could not acquire token: %w", err)
 		return
 	}
 
 	user, err := auth.GetUser(token)
 	if err != nil {
+		w.WriteHeader(500)
 		fmt.Fprintf(w, "could not fetch user data")
+		log.Printf("could not fetch user data: %w", err)
 		return
 	}
 

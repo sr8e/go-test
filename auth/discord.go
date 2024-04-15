@@ -44,7 +44,7 @@ func GetAuthToken(code string) (token string) {
 
 	req, err := http.NewRequest(http.MethodPost, "https://discord.com/api/oauth2/token", strings.NewReader(postBody.Encode()))
 	if err != nil {
-		log.Print("could not construct request")
+		err = fmt.Errorf("could not construct request: %w", err)
 		return
 	}
 	
@@ -54,18 +54,18 @@ func GetAuthToken(code string) (token string) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Print("could not send request")
+		err = fmt.Errorf("could not send request: %w", err)
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Print("could not read response")
+		err = fmt.Errorf("could not read response: %w", err)
 		return
 	}
 	
 	if resp.StatusCode != 200 {
-		log.Printf("request failed: %s, content: %s", resp.Status, string(body))
+		err = fmt.Errorf("request failed: %s, content: %s", resp.Status, string(body))
 		return
 	}
 
@@ -76,7 +76,7 @@ func GetAuthToken(code string) (token string) {
 	var tr TokenResponse
 	err = json.Unmarshal(body, &tr)
 	if err != nil {
-		log.Printf("could not unmarshal json")
+		err = fmt.Errorf("could not unmarshal json: %w", err)
 		return
 	}
 	return tr.AccessToken
@@ -85,7 +85,7 @@ func GetAuthToken(code string) (token string) {
 func GetUser(token string) (user DiscordUser, err error) {
 	req, err := http.NewRequest(http.MethodGet, "https://discord.com/api/oauth2/@me", nil)
 	if err != nil {
-		log.Printf("could not construct request")
+		err = fmt.Errorf("could not construct request: %w", err)
 		return
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -93,18 +93,18 @@ func GetUser(token string) (user DiscordUser, err error) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("could not send request")
+		err = fmt.Errorf("could not send request: %w", err)
 		return
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("could not read response")
+		err = fmt.Errorf("could not read response: %w", err)
 		return
 	}
 
 	if resp.StatusCode != 200 {
-		log.Printf("request failed: %s, content: %s", resp.Status, resp.Body)
+		err = fmt.Errorf("request failed: %s, content: %s", resp.Status, string(body))
 		return
 	}
 	
@@ -114,7 +114,7 @@ func GetUser(token string) (user DiscordUser, err error) {
 	var ur UserResponse
 	err = json.Unmarshal(body, &ur)
 	if err != nil {
-		log.Printf("could not unmarshal json")
+		err = fmt.Errorf("could not unmarshal json: %w", err)
 		return
 	}
 	return ur.User, nil
