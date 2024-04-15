@@ -10,6 +10,7 @@ import (
 func Callback(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("state")
 	if err != nil {
+		w.WriteHeader(400)
 		fmt.Fprintf(w, "authentication failed: cookie not exist")
 		return
 	}	

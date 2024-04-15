@@ -58,7 +58,7 @@ func (ce CookieEncrypter) Decode(c http.Cookie) (value string, err error) {
 		err = fmt.Errorf("failed to verify cookie: %w", err)
 		return
 	}
-	if expDate != c.Expires {
+	if !expDate.Equal(c.Expires) {
 		err = errors.New("failed to verify cookie: expire time altered")
 		return
 	}
