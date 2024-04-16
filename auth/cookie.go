@@ -52,14 +52,10 @@ func (ce CookieEncrypter) Decode(c http.Cookie) (value string, err error) {
 		err = fmt.Errorf("could not decode cookie value: %w", err)
 		return
 	}
-	
-	cryptStr, expDate, err := verify(b, ce.secretKey)
+
+	cryptStr, err := verify(b, ce.secretKey)
 	if err != nil {
 		err = fmt.Errorf("failed to verify cookie: %w", err)
-		return
-	}
-	if !expDate.Equal(c.Expires) {
-		err = errors.New("failed to verify cookie: expire time altered")
 		return
 	}
 	return decrypt(cryptStr, ce.secretKey)
@@ -87,7 +83,7 @@ func signature(body string, expire time.Time, hashKey []byte) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(msg))
 }
 
-func verify(sgn []byte, hashKey []byte) (body string, exp time.Time, err error) {
+func verify(sgn []byte, hashKey []byte) (body string, err error) {
 	msgLen := len(sgn) - 32
 	if msgLen <= 0 {
 		err = errors.New("signature too short")
@@ -115,7 +111,7 @@ func verify(sgn []byte, hashKey []byte) (body string, exp time.Time, err error) 
 		err = errors.New("cookie expired")
 		return
 	}
-	return string(parts[0]), expire, nil
+	return string(parts[0]), nil
 }
 
 func decrypt(cryptStr string, secretKey []byte) (decrypted string, err error) {
