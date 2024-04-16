@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"time"
+	"github.com/sr8e/mellow-ir/db"
 )
 
 type TokenResponse struct {
@@ -129,4 +130,12 @@ func GetUser(token string) (user DiscordUser, err error) {
 		return
 	}
 	return ur.User, nil
+}
+
+func FromDiscordUser(u *db.User, tr TokenResponse, du DiscordUser) {
+	u.DisplayName = du.UserName
+	u.IconURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", du.Id, du.Avatar)
+	u.AccessToken = tr.AccessToken
+	u.RefreshToken = tr.RefreshToken
+	u.Expire = tr.Expire
 }
