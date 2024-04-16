@@ -39,7 +39,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.GetAuthToken(query.Get("code"))
+	token, err := auth.GetAuthToken(query.Get("code"), false)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "authentication failed: could not acquire token")

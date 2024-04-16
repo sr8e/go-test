@@ -27,6 +27,28 @@ type DiscordUser struct {
 	Avatar string
 }
 
+func wrapClient(r *http.Request) (*http.Response, []byte, error) {
+	client := http.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		err = fmt.Errorf("could not send request: %w", err)
+		return resp, nil, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf("could not read response: %w", err)
+		return resp, body, err
+	}
+
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("request failed: %s, content: %s", resp.Status, string(body))
+		return resp, body, err
+	}
+
+	return resp, body, nil
+}
+
 func GenerateAuthURL() (authUrl string, state string) {
 	// generate state string
 	randbytes := make([]byte, 16)
@@ -45,11 +67,16 @@ func GenerateAuthURL() (authUrl string, state string) {
 	return authUrl, state
 }
 
-func GetAuthToken(code string) (tr TokenResponse, err error) {
+func GetAuthToken(code string, refresh bool) (tr TokenResponse, err error) {
 	postBody := url.Values{}
-	postBody.Add("grant_type", "authorization_code")
-	postBody.Add("code", code)
-	postBody.Add("redirect_uri", discordCallbackURL)
+	if refresh {
+		postBody.Add("grant_type", "refresh_token")
+		postBody.Add("refresh_token", code)
+	} else {
+		postBody.Add("grant_type", "authorization_code")
+		postBody.Add("code", code)
+		postBody.Add("redirect_uri", discordCallbackURL)
+	}
 
 	req, err := http.NewRequest(http.MethodPost, "https://discord.com/api/oauth2/token", strings.NewReader(postBody.Encode()))
 	if err != nil {
@@ -60,21 +87,8 @@ func GetAuthToken(code string) (tr TokenResponse, err error) {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(discordClientId, discordClientSecret)
 
-	client := http.Client{}
-	resp, err := client.Do(req)
+	resp, body, err := wrapClient(req)
 	if err != nil {
-		err = fmt.Errorf("could not send request: %w", err)
-		return
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("could not read response: %w", err)
-		return
-	}
-	
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("request failed: %s, content: %s", resp.Status, string(body))
 		return
 	}
 
@@ -102,24 +116,11 @@ func GetUser(token string) (user DiscordUser, err error) {
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	client := http.Client{}
-	resp, err := client.Do(req)
+	_, body, err := wrapClient(req)
 	if err != nil {
-		err = fmt.Errorf("could not send request: %w", err)
 		return
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("could not read response: %w", err)
-		return
-	}
-
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("request failed: %s, content: %s", resp.Status, string(body))
-		return
-	}
-	
 	type UserResponse struct {
 		User DiscordUser
 	}
