@@ -1,13 +1,14 @@
 package auth
 
 import (
-	"github.com/sr8e/mellow-ir/db"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+
+	"github.com/sr8e/mellow-ir/db"
 )
 
-func GenerateSecretToken() (secret, hash, salt string){
+func GenerateSecretToken() (secret, hash, salt string) {
 	userSecret := make([]byte, 16)
 	secretSalt := make([]byte, 16)
 	rand.Read(userSecret)
