@@ -21,7 +21,7 @@ type User struct {
 func finishTx(tx *sql.Tx, err error) error {
 	if err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("Rollback failed: %w, during handling error %w", rbErr, err)
+			return fmt.Errorf("rollback failed: %w, during handling error %w", rbErr, err)
 		}
 	} else {
 		err = tx.Commit()

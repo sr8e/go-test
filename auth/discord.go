@@ -95,7 +95,7 @@ func GetAuthToken(code string, refresh bool) (tr TokenResponse, err error) {
 
 	respTime, err := time.Parse(time.RFC1123, resp.Header.Get("Date"))
 	if err != nil {
-		log.Printf("cannot parse date (%s), set local time instead")
+		log.Printf("cannot parse date (%s), set local time instead", respTime)
 		respTime = time.Now()
 	}
 

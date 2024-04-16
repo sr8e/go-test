@@ -17,7 +17,7 @@ func init() {
 	} else {
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
-			log.Printf("could not open db pool: %w", err)
+			log.Printf("could not open db pool: %s", err)
 		} else {
 			dbPool = db
 		}
