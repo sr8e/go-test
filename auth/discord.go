@@ -133,10 +133,14 @@ func GetUser(token string) (user DiscordUser, err error) {
 	return ur.User, nil
 }
 
-func FromDiscordUser(u *db.User, tr TokenResponse, du DiscordUser) {
-	u.DisplayName = du.UserName
-	u.IconURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", du.Id, du.Avatar)
-	u.AccessToken = tr.AccessToken
-	u.RefreshToken = tr.RefreshToken
-	u.Expire = tr.Expire
+func FromDiscordUser(u *db.User, tr *TokenResponse, du *DiscordUser) {
+	if du != nil {
+		u.DisplayName = du.UserName
+		u.IconURL = fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.png", du.Id, du.Avatar)
+	}
+	if tr != nil {
+		u.AccessToken = tr.AccessToken
+		u.RefreshToken = tr.RefreshToken
+		u.Expire = tr.Expire
+	}
 }

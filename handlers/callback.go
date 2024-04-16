@@ -81,7 +81,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error on querying user: %s", err)
 		return
 	}
-	auth.FromDiscordUser(&dbUser, token, user)
+	auth.FromDiscordUser(&dbUser, &token, &user)
 	if ok {
 		// existing user
 		err = dbUser.Save()
