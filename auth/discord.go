@@ -1,30 +1,31 @@
 package auth
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"strings"
-	"net/url"
-	"net/http"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
+
 	"github.com/sr8e/mellow-ir/db"
 )
 
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
+	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	ExpiresIn int `json:"expires_in"`
-	Expire time.Time
+	ExpiresIn    int    `json:"expires_in"`
+	Expire       time.Time
 }
 
 type DiscordUser struct {
-	Id string
+	Id       string
 	UserName string
-	Avatar string
+	Avatar   string
 }
 
 func wrapClient(r *http.Request) (*http.Response, []byte, error) {
@@ -83,7 +84,7 @@ func GetAuthToken(code string, refresh bool) (tr TokenResponse, err error) {
 		err = fmt.Errorf("could not construct request: %w", err)
 		return
 	}
-	
+
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(discordClientId, discordClientSecret)
 

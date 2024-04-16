@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/sr8e/mellow-ir/handlers"
 	"net/http"
+
+	"github.com/sr8e/mellow-ir/handlers"
 )
 
 func main() {

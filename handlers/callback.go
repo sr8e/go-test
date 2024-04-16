@@ -1,20 +1,22 @@
 package handlers
 
 import (
-	"github.com/sr8e/mellow-ir/auth"
-	"github.com/sr8e/mellow-ir/db"
 	"fmt"
 	"log"
-	"time"
 	"net/http"
+	"time"
+
+	"github.com/sr8e/mellow-ir/auth"
+	"github.com/sr8e/mellow-ir/db"
 )
+
 func Callback(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("state")
 	if err != nil {
 		w.WriteHeader(400)
 		fmt.Fprintf(w, "authentication failed: cookie not exist")
 		return
-	}	
+	}
 
 	ce, err := auth.NewCookieEncrypter()
 	if err != nil {
@@ -43,7 +45,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "authentication failed: could not acquire token")
-		log.Printf("could not acquire token: %w", err)
+		log.Printf("could not acquire token: %s", err)
 		return
 	}
 
@@ -51,14 +53,14 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "could not fetch user data")
-		log.Printf("could not fetch user data: %w", err)
+		log.Printf("could not fetch user data: %s", err)
 		return
 	}
 
 	// set session cookie
 	sessRaw := http.Cookie{
-		Name: "session",
-		Value: user.Id,
+		Name:    "session",
+		Value:   user.Id,
 		Expires: time.Now().AddDate(0, 0, 7),
 	}
 	sessCookie, err := ce.Encode(sessRaw)
@@ -71,7 +73,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	// delete state cookie
 	c.MaxAge = -1
 	http.SetCookie(w, c)
-	
+
 	// save on db
 	dbUser := db.User{Id: user.Id}
 	ok, err := dbUser.Get()

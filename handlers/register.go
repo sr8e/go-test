@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"github.com/sr8e/mellow-ir/auth"
 	"fmt"
-	"net/http"
+	"github.com/sr8e/mellow-ir/auth"
 	"log"
+	"net/http"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	url, state := auth.GenerateAuthURL()
 	cookie := http.Cookie{
-		Name: "state",
+		Name:  "state",
 		Value: state,
 	}
 	ce, err := auth.NewCookieEncrypter()

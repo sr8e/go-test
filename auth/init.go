@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"os"
-	"log"
 	"encoding/base64"
+	"log"
+	"os"
 )
 
 var discordClientId string

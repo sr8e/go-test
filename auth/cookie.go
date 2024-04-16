@@ -1,18 +1,18 @@
 package auth
 
 import (
-	"fmt"
-	"time"
-	"errors"
 	"bytes"
-	"strconv"
-	"net/http"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
 )
 
 type CookieEncrypter struct {
@@ -33,8 +33,8 @@ func (ce CookieEncrypter) Encode(c http.Cookie) (out http.Cookie, err error) {
 	if err != nil {
 		err = fmt.Errorf("could not encrypt: %w", err)
 		return
-	} 
-	
+	}
+
 	encoded := signature(enc, c.Expires, ce.secretKey)
 	out.Value = encoded
 

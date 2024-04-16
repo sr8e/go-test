@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"fmt"
-	"net/http"
 	"log"
+	"net/http"
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"os"
 	"log"
+	"os"
 )
 
 var cryptKey string
@@ -13,4 +13,4 @@ func init() {
 	if cryptKey == "" {
 		log.Print("environment variable IR_CRYPT_KEY is empty")
 	}
-} 
+}
