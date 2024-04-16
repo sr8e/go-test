@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/sr8e/mellow-ir/auth"
+	"github.com/sr8e/mellow-ir/db"
 	"fmt"
 	"log"
 	"time"
@@ -70,6 +71,45 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	// delete state cookie
 	c.MaxAge = -1
 	http.SetCookie(w, c)
+	
+	// save on db
+	dbUser := db.User{Id: user.Id}
+	ok, err := dbUser.Get()
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "db operation error")
+		log.Printf("error on querying user: %s", err)
+		return
+	}
+	auth.FromDiscordUser(&dbUser, token, user)
+	if ok {
+		// existing user
+		err = dbUser.Save()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "db operation error")
+			log.Printf("error on saving user: %s", err)
+			return
+		}
+		http.Redirect(w, r, "/", 301)
+		return
+	}
 
-	fmt.Fprintf(w, `authentication succeed: %s, %s, <img src="https://cdn.discordapp.com/avatar/%[1]s/%[3]s.png">`, user.Id, user.UserName, user.Avatar)
+	// create new user
+	secret, hash, salt := auth.GenerateSecretToken()
+	dbUser.SecretHash = hash
+	dbUser.SecretSalt = salt
+	err = dbUser.Save()
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "db operation error")
+		log.Printf("error on creating user: %s", err)
+		return
+	}
+
+	fmt.Fprintf(w, `authentication succeed.
+		Your User ID: %s,
+		Your Secret token: %s (make sure you keep this code. it will never be shown again!)`,
+		dbUser.Id, secret,
+	)
 }
