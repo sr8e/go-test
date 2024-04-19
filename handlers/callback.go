@@ -98,9 +98,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new user
-	secret, hash, salt := auth.GenerateSecretToken()
-	dbUser.SecretHash = hash
-	dbUser.SecretSalt = salt
+	secret := dbUser.GenerateSecretToken()
 	err = dbUser.Save()
 	if err != nil {
 		w.WriteHeader(500)

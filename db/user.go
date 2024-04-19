@@ -14,8 +14,9 @@ type User struct {
 	AccessToken  string
 	RefreshToken string
 	Expire       time.Time
-	SecretHash   string
-	SecretSalt   string
+	secretHash   string
+	secretSalt   string
+	loaded       bool
 }
 
 func finishTx(tx *sql.Tx, err error) error {
@@ -47,7 +48,7 @@ func (u *User) Save() (err error) {
 				refresh_token, expire, secret_hash, secret_salt
 			)=($1, $2, $3, $4, $5, $6, $7, $8);`,
 			u.Id, u.DisplayName, u.IconURL, u.AccessToken,
-			u.RefreshToken, u.Expire, u.SecretHash, u.SecretSalt,
+			u.RefreshToken, u.Expire, u.secretHash, u.secretSalt,
 		)
 	} else if errors.Is(noRow, sql.ErrNoRows) {
 		// user not exist in table, create
@@ -57,7 +58,7 @@ func (u *User) Save() (err error) {
 				refresh_token, expire, secret_hash, secret_salt
 			) values ($1, $2, $3, $4, $5, $6, $7, $8);`,
 			u.Id, u.DisplayName, u.IconURL, u.AccessToken,
-			u.RefreshToken, u.Expire, u.SecretHash, u.SecretSalt,
+			u.RefreshToken, u.Expire, u.secretHash, u.secretSalt,
 		)
 	} else {
 		return noRow
@@ -74,7 +75,7 @@ func (u *User) Get() (ok bool, err error) {
 	)
 	err = row.Scan(
 		&u.Id, &u.DisplayName, &u.IconURL, &u.AccessToken,
-		&u.RefreshToken, &u.Expire, &u.SecretHash, &u.SecretSalt,
+		&u.RefreshToken, &u.Expire, &u.secretHash, &u.secretSalt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -83,5 +84,6 @@ func (u *User) Get() (ok bool, err error) {
 			return false, err
 		}
 	}
+	u.loaded = true
 	return true, nil
 }
