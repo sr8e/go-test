@@ -10,7 +10,30 @@ import (
 	"github.com/sr8e/mellow-ir/db"
 )
 
-func RequireSession(mainHandler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+func WithoutSession(mainHandler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	preHandler := func(w http.ResponseWriter, r *http.Request) {
+		u, err := checkSession(r)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintf(w, "internal server error")
+			log.Printf("session check failed: %s", err)
+			return
+		}
+		t := time.Now()
+		if u != nil && t.Before(u.Expire) {
+			if u.Expire.Sub(t).Seconds() < 3600*24*3.5 {
+				// half of ttl, try refresh access token async
+				go refreshRoutine(u)
+			}
+			http.Redirect(w, r, "/mypage", http.StatusFound)
+			return
+		}
+		mainHandler(w, r)
+	}
+	return http.HandlerFunc(preHandler)
+}
+
+func RequireSession(mainHandler func(http.ResponseWriter, *http.Request, *db.User)) http.HandlerFunc {
 	preHandler := func(w http.ResponseWriter, r *http.Request) {
 		u, err := checkSession(r)
 		if err != nil {
@@ -21,26 +44,14 @@ func RequireSession(mainHandler func(http.ResponseWriter, *http.Request)) http.H
 		}
 		t := time.Now()
 		if u == nil || t.After(u.Expire) {
-			http.Redirect(w, r, "/login", 301)
+			http.Redirect(w, r, "/authenticate", http.StatusFound)
 			return
 		}
 		if u.Expire.Sub(t).Seconds() < 3600*24*3.5 {
 			// half of ttl, try refresh access token async
-			go func() {
-				tr, err := auth.GetAuthToken(u.RefreshToken, true)
-				if err != nil {
-					log.Printf("token refresh failed: %s", err)
-					return
-				}
-				auth.FromDiscordUser(u, &tr, nil)
-				err = u.Save()
-				if err != nil {
-					log.Printf("user update failed: %s", err)
-					return
-				}
-			}()
+			go refreshRoutine(u)
 		}
-		mainHandler(w, r)
+		mainHandler(w, r, u)
 	}
 	return http.HandlerFunc(preHandler)
 }
@@ -70,4 +81,18 @@ func checkSession(r *http.Request) (*db.User, error) {
 		return nil, nil
 	}
 	return &u, nil
+}
+
+func refreshRoutine(u *db.User) {
+	tr, err := auth.GetAuthToken(u.RefreshToken, true)
+	if err != nil {
+		log.Printf("token refresh failed: %s", err)
+		return
+	}
+	auth.FromDiscordUser(u, &tr, nil)
+	err = u.Save()
+	if err != nil {
+		log.Printf("user update failed: %s", err)
+		return
+	}
 }
