@@ -5,27 +5,31 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sr8e/mellow-ir/db"
+	"github.com/sr8e/mellow-ir/auth"
 )
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	id := r.PostFormValue("id")
-	pw := r.PostFormValue("password")
-
-	dbUser := db.User{Id: id}
-	ok, err := dbUser.VerifySecretToken(pw)
+	u, ok, err := BasicAuth(r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error on login: %s", err)
+		log.Printf("error at api/me: %s", err)
 		return
 	}
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	fmt.Fprintf(w, "ok")
+
+	irToken, err := auth.CreateIRToken(u.Id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error at api/me: %s", err)
+		return
+	}
+
+	fmt.Fprintf(w, "%s:%s", u.DisplayName, irToken)
 }
