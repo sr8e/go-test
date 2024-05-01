@@ -2,10 +2,7 @@ package auth
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -29,7 +26,7 @@ func NewCookieEncrypter() (*CookieEncrypter, error) {
 func (ce CookieEncrypter) Encode(c http.Cookie) (out http.Cookie, err error) {
 	out = c
 	// encrypt value
-	enc, err := encrypt(c.Value, ce.secretKey)
+	enc, err := Encrypt(c.Value, ce.secretKey)
 	if err != nil {
 		err = fmt.Errorf("could not encrypt: %w", err)
 		return
@@ -58,22 +55,7 @@ func (ce CookieEncrypter) Decode(c http.Cookie) (value string, err error) {
 		err = fmt.Errorf("failed to verify cookie: %w", err)
 		return
 	}
-	return decrypt(cryptStr, ce.secretKey)
-}
-
-func encrypt(value string, secretKey []byte) (string, error) {
-	block, err := aes.NewCipher(secretKey)
-	if err != nil {
-		return "", err
-	}
-	bs := block.BlockSize()
-	iv := make([]byte, bs)
-	rand.Read(iv)
-
-	valByte := []byte(value)
-	cipher.NewCTR(block, iv).XORKeyStream(valByte, valByte)
-
-	return base64.StdEncoding.EncodeToString(append(iv, valByte...)), nil
+	return Decrypt(cryptStr, ce.secretKey)
 }
 
 func signature(body string, expire time.Time, hashKey []byte) string {
@@ -112,28 +94,4 @@ func verify(sgn []byte, hashKey []byte) (body string, err error) {
 		return
 	}
 	return string(parts[0]), nil
-}
-
-func decrypt(cryptStr string, secretKey []byte) (decrypted string, err error) {
-	cryptByte, err := base64.StdEncoding.DecodeString(cryptStr)
-	if err != nil {
-		err = fmt.Errorf("could not decode crypted body: %w", err)
-		return
-	}
-
-	block, err := aes.NewCipher(secretKey)
-	if err != nil {
-		return
-	}
-	bs := block.BlockSize()
-	if len(cryptByte) <= bs {
-		err = errors.New("crypted content too short")
-		return
-	}
-	iv := cryptByte[:bs]
-	body := cryptByte[bs:]
-
-	cipher.NewCTR(block, iv).XORKeyStream(body, body)
-
-	return string(body), nil
 }
