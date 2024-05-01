@@ -48,14 +48,7 @@ func BattleMainRoutine(ctx context.Context, cancel context.CancelFunc, roomReq <
 
 	// aggregating channel closure
 	go func(ctx context.Context, aggrChan chan<- Message) {
-		sendBuf := make([]Message, 0)
 		for {
-			if len(sendBuf) > 10 {
-				// aggrChan clogged
-				log.Print("too many item in aggrChan buffer")
-				close(aggrChan)
-				return
-			}
 			select {
 			case <-ctx.Done():
 				log.Print("aggrChan@battleMain canceled")
@@ -68,9 +61,8 @@ func BattleMainRoutine(ctx context.Context, cancel context.CancelFunc, roomReq <
 				case msg, ok := <-v.FromRoom():
 					if !ok {
 						// room has been closed
-						v.CloseRoom()
 						delete(rooms, k)
-					} else if len(aggrChan) < cap(aggrChan) {
+					} else {
 						aggrChan <- msg
 					}
 				default:
