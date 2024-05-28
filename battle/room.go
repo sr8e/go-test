@@ -53,11 +53,13 @@ func createPlayer(id, name string) *Player {
 
 func (r *Room) CloseRoom() {
 	log.Printf("closeRoom %s called", r.Name)
+	// TODO: make thread safe
 	r.cancelFunc()
 	if !r.closed {
+		r.closed = true
 		close(r.toRoom)
 		close(r.fromRoom)
-		r.closed = true
+		db.ClearRoom(r.Name)
 	}
 }
 
