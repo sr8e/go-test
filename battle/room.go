@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/sr8e/mellow-ir/db"
+	"github.com/sr8e/mellow-ir/structs"
 )
 
 type Room struct {
@@ -68,6 +70,7 @@ func (r *Room) FromRoom() <-chan Message {
 func (r *Room) Execute() {
 	log.Println("room routine executed")
 	players := make(map[string]*Player)
+	hashset := make(map[string]structs.Set[string])
 
 	roomTimer := time.AfterFunc(time.Minute, func() {
 		log.Printf("room %s closed as timeout", r.Name)
@@ -105,7 +108,15 @@ func (r *Room) Execute() {
 			}
 			p, ok := players[msg.User]
 			if !ok {
+				// new user
 				if msg.Cmd == "JOIN_REQ" {
+					if len(players) > 1 {
+						r.fromRoom <- Message{
+							User: msg.User,
+							Cmd:  "ERR_ROOMFULL",
+						}
+						return
+					}
 					dbUser := db.User{Id: msg.User}
 					if ok, err := dbUser.Get(); !ok {
 						log.Printf("user %s not in db is trying to connect room %s", msg.User, r.Name)
@@ -130,18 +141,19 @@ func (r *Room) Execute() {
 				continue
 			}
 			p.Refresh()
-			if msg.Cmd == "THUMP_REQ" {
+			switch msg.Cmd {
+			case "THUMP_REQ":
 				r.fromRoom <- Message{
 					User: msg.User,
 					Cmd:  "THUMP_ACK",
 				}
-			} else if msg.Cmd == "POLL_OPPONENT" {
+			case "POLL_OPPONENT":
 				if len(players) == 1 {
 					r.fromRoom <- Message{
 						User: msg.User,
 						Cmd:  "OPPONENT_NOT_FOUND",
 					}
-				} else if len(players) == 2 {
+				} else {
 					for k, v := range players {
 						if k != msg.User {
 							r.fromRoom <- Message{
@@ -152,12 +164,51 @@ func (r *Room) Execute() {
 							break
 						}
 					}
-				} else {
-					log.Printf("error on room %s: >2 players?", r.Name)
-					r.CloseRoom()
 				}
+			case "SEND_LIST":
+				if _, ok := hashset[msg.User]; ok {
+					// already sent
+					r.fromRoom <- Message{
+						User: msg.User,
+						Cmd:  "LIST_ALREADY_SENT",
+					}
+				} else {
+					hashes := strings.Split(msg.Content, ",")
+					hashset[msg.User] = structs.NewSet(hashes...)
+					r.fromRoom <- Message{
+						User: msg.User,
+						Cmd:  "LIST_ACK",
+					}
+				}
+			case "POLL_LIST":
+				ready := true
+				for k, _ := range players {
+					_, ok := hashset[k]
+					ready = ready && ok
+				}
+				if ready {
+					var interSet structs.Set[string]
+					for _, v := range hashset {
+						if interSet == nil {
+							interSet = v
+						} else {
+							interSet = interSet.Intersect(v)
+						}
+					}
+					hashSlice := interSet.ToSlice()
+					r.fromRoom <- Message{
+						User:    msg.User,
+						Cmd:     "LIST_READY",
+						Content: strings.Join(hashSlice, ","),
+					}
+				} else {
+					r.fromRoom <- Message{
+						User: msg.User,
+						Cmd:  "LIST_NOT_READY",
+					}
+				}
+			default:
 			}
-		default:
 		}
 
 	}
