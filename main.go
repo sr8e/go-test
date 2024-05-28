@@ -26,5 +26,6 @@ func main() {
 	// apis
 	mux.Handle("/api/me", http.HandlerFunc(handlers.Login))
 	mux.Handle("/api/room/create", http.HandlerFunc(handlers.CreateRoom(newRoomChan)))
+	mux.Handle("/api/room/join", http.HandlerFunc(handlers.JoinRoom))
 	http.ListenAndServe(":8080", mux)
 }
